@@ -1,0 +1,798 @@
+{
+  "info": {
+    "_postman_id": "21751fb8-dee5-5370-827f-d89c269159b6",
+    "name": "PetHealthAPI - Sprint 4 - Testes de Integração",
+    "description": "Testes de integração automatizados da Pet Health API (.NET 8 + Oracle).\nExecutar em ordem pelo Collection Runner (ou Newman). Dados controlados nas variáveis do environment; a execução começa limpando e termina excluindo os dados que criou, então pode ser repetida.\nTodas as requisições também validam tempo de resposta < 2000 ms (script da coleção).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Requisito não funcional aplicado a todas as requisições",
+          "pm.test('Tempo de resposta < 2000 ms', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Preparação",
+      "description": "Garante o ambiente limpo antes dos testes.",
+      "item": [
+        {
+          "name": "TC00 - Preparar ambiente (remove dados de execução anterior)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Ambiente verificado (200 ou 404)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const antigo = pm.response.json().id;",
+                  "    pm.sendRequest({ url: pm.variables.get('baseUrl') + '/api/Tutores/' + antigo, method: 'DELETE' }, function (err, res) {",
+                  "        pm.test('Tutor da execução anterior removido (204)', function () {",
+                  "            pm.expect(err).to.equal(null);",
+                  "            pm.expect(res.code).to.equal(204);",
+                  "        });",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Tutores/email/{{tutorEmail}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Tutores",
+                "email",
+                "{{tutorEmail}}"
+              ]
+            },
+            "description": "Garante dados controlados: se o tutor de teste ficou de uma execução anterior, ele é removido (o DELETE em cascata remove pets, vacinas e consultas). Esperado: 200 (existia e foi removido) ou 404 (ambiente limpo)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Tutores (PBI 1)",
+      "description": "Cadastro de tutor.",
+      "item": [
+        {
+          "name": "TC01 - Cadastrar tutor válido (PBI 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Status 201 Created', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Retorna id numérico gerado pelo banco', function () {",
+                  "    pm.expect(json.id).to.be.a('number').and.to.be.above(0);",
+                  "});",
+                  "pm.test('Dados gravados iguais aos enviados', function () {",
+                  "    pm.expect(json.nome).to.eql(pm.variables.get('tutorNome'));",
+                  "    pm.expect(json.email).to.eql(pm.variables.get('tutorEmail'));",
+                  "    pm.expect(json.telefone).to.eql(pm.variables.get('tutorTelefone'));",
+                  "});",
+                  "pm.test('Header Location aponta para o novo recurso', function () {",
+                  "    pm.expect(pm.response.headers.get('Location')).to.include('/api/Tutores/' + json.id);",
+                  "});",
+                  "pm.collectionVariables.set('tutorId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Tutores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Tutores"
+              ]
+            },
+            "description": "Entrada: tutor com nome, e-mail e telefone válidos. Saída esperada: 201 Created, id gerado e dados iguais aos enviados.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{tutorNome}}\",\n  \"email\": \"{{tutorEmail}}\",\n  \"telefone\": \"{{tutorTelefone}}\",\n  \"endereco\": \"Rua das Flores, 100 - São Paulo/SP\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC02 - Bloquear tutor com e-mail duplicado (PBI 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Mensagem de e-mail duplicado', function () {",
+                  "    pm.expect(pm.response.json().mensagem).to.eql('Já existe um tutor cadastrado com este email.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Tutores",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Tutores"
+              ]
+            },
+            "description": "Entrada: mesmo e-mail do TC01. Saída esperada: 400 Bad Request com a mensagem de e-mail duplicado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Tutor Duplicado\",\n  \"email\": \"{{tutorEmail}}\",\n  \"telefone\": \"11900000000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Pets (PBI 1 e 2)",
+      "description": "Cadastro, validação e edição de pet.",
+      "item": [
+        {
+          "name": "TC03 - Cadastrar pet válido vinculado ao tutor (PBI 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Status 201 Created', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Pet vinculado ao tutor correto', function () {",
+                  "    pm.expect(json.tutorId).to.eql(Number(pm.collectionVariables.get('tutorId')));",
+                  "});",
+                  "pm.test('Dados do pet iguais aos enviados', function () {",
+                  "    pm.expect(json.nome).to.eql(pm.variables.get('petNome'));",
+                  "    pm.expect(json.especie).to.eql('Gato');",
+                  "    pm.expect(json.peso).to.eql(Number(pm.variables.get('petPeso')));",
+                  "    pm.expect(json.castrado).to.eql(false);",
+                  "});",
+                  "pm.collectionVariables.set('petId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Pets"
+              ]
+            },
+            "description": "Entrada: pet Luna (Gato, 2 anos, 4.8 kg) do tutor do TC01. Saída esperada: 201, id gerado e vínculo com o tutor.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"{{petNome}}\",\n  \"especie\": \"Gato\",\n  \"raca\": \"Persa\",\n  \"idade\": 2,\n  \"peso\": {{petPeso}},\n  \"sexo\": \"Fêmea\",\n  \"castrado\": false,\n  \"alergias\": \"Nenhuma\",\n  \"tutorId\": {{tutorId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC04 - Rejeitar pet com peso fora da faixa (PBI 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Mensagem de validação do peso', function () {",
+                  "    pm.expect(pm.response.text()).to.include('Peso deve ser entre 0.1kg e 200kg');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Pets"
+              ]
+            },
+            "description": "Entrada: peso 0 (regra: 0.1 a 200 kg). Saída esperada: 400 com a mensagem de validação do peso.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Peso Zero\",\n  \"especie\": \"Gato\",\n  \"idade\": 2,\n  \"peso\": 0,\n  \"tutorId\": {{tutorId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC05 - Rejeitar pet de tutor inexistente (PBI 1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400 Bad Request', function () { pm.response.to.have.status(400); });",
+                  "pm.test('Mensagem de tutor inexistente', function () {",
+                  "    pm.expect(pm.response.json().mensagem).to.eql('Tutor com ID 999999 não encontrado. Cadastre o tutor antes do pet.');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Pets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Pets"
+              ]
+            },
+            "description": "Entrada: tutorId 999999. Saída esperada: 400 informando que o tutor não existe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Sem Dono\",\n  \"especie\": \"Cachorro\",\n  \"idade\": 1,\n  \"peso\": 5,\n  \"tutorId\": 999999\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC06 - Editar peso e castração do pet (PBI 2)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 No Content', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Pets/{{petId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Pets",
+                "{{petId}}"
+              ]
+            },
+            "description": "Entrada: peso 5.1 e castrado = true. Saída esperada: 204 No Content.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": {{petId}},\n  \"nome\": \"{{petNome}}\",\n  \"especie\": \"Gato\",\n  \"raca\": \"Persa\",\n  \"idade\": 2,\n  \"peso\": {{petPesoEditado}},\n  \"sexo\": \"Fêmea\",\n  \"castrado\": true,\n  \"alergias\": \"Nenhuma\",\n  \"tutorId\": {{tutorId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC07 - Consultar pet editado com rastreabilidade (PBI 2 e PBI 6)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Edição persistida (peso 5.1 e castrado)', function () {",
+                  "    pm.expect(json.peso).to.eql(Number(pm.variables.get('petPesoEditado')));",
+                  "    pm.expect(json.castrado).to.eql(true);",
+                  "});",
+                  "pm.test('X-Correlation-ID devolvido igual ao enviado (auditoria LGPD)', function () {",
+                  "    pm.expect(pm.response.headers.get('X-Correlation-ID')).to.eql(pm.variables.get('correlationId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Correlation-ID",
+                "value": "{{correlationId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Pets/{{petId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Pets",
+                "{{petId}}"
+              ]
+            },
+            "description": "Entrada: header X-Correlation-ID controlado. Saída esperada: 200, peso 5.1, castrado true e o mesmo X-Correlation-ID na resposta."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Vacinas (PBI 3, 4 e 7)",
+      "description": "Registro, carteira e lembrete de vacinas.",
+      "item": [
+        {
+          "name": "TC08 - Registrar vacina com próxima dose em 10 dias (PBI 3)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Dado controlado relativo: próxima dose sempre 10 dias após a execução",
+                  "const d = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('dataProximaDose', d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Status 201 Created', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Vacina registrada no pet correto', function () {",
+                  "    pm.expect(json.petId).to.eql(Number(pm.collectionVariables.get('petId')));",
+                  "    pm.expect(json.nome).to.eql('V4 Felina');",
+                  "    pm.expect(json.dataProximaDose).to.include(pm.collectionVariables.get('dataProximaDose'));",
+                  "});",
+                  "pm.collectionVariables.set('vacinaId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Vacinas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Vacinas"
+              ]
+            },
+            "description": "Entrada: vacina V4 Felina, próxima dose = hoje + 10 dias (calculada no pre-request). Saída esperada: 201 e id gerado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"V4 Felina\",\n  \"dataAplicacao\": \"2026-10-01\",\n  \"dataProximaDose\": \"{{dataProximaDose}}\",\n  \"fabricante\": \"Zoetis\",\n  \"lote\": \"PM-2026-01\",\n  \"veterinario\": \"Dra. Paula Reis\",\n  \"petId\": {{petId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC09 - Visualizar carteira de vacinação do pet (PBI 4)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Carteira com 1 vacina, a do TC08', function () {",
+                  "    pm.expect(json).to.be.an('array').with.lengthOf(1);",
+                  "    pm.expect(json[0].id).to.eql(Number(pm.collectionVariables.get('vacinaId')));",
+                  "});",
+                  "pm.test('Não expõe dados do tutor (LGPD)', function () {",
+                  "    const txt = pm.response.text().toLowerCase();",
+                  "    pm.expect(txt).to.not.include('email');",
+                  "    pm.expect(txt).to.not.include('telefone');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Vacinas/pet/{{petId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Vacinas",
+                "pet",
+                "{{petId}}"
+              ]
+            },
+            "description": "Saída esperada: 200 com exatamente 1 vacina (a do TC08) e nenhum dado pessoal do tutor."
+          }
+        },
+        {
+          "name": "TC10 - Lembrete: vacina aparece na lista dos próximos 30 dias (PBI 7)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Vacina do TC08 está na lista de vencendo', function () {",
+                  "    const ids = pm.response.json().map(v => v.id);",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get('vacinaId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Vacinas/vencendo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Vacinas",
+                "vencendo"
+              ]
+            },
+            "description": "Saída esperada: 200 e a vacina do TC08 (próxima dose em 10 dias) presente na lista."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Histórico clínico (PBI 5 e 7)",
+      "description": "Consultas e retornos.",
+      "item": [
+        {
+          "name": "TC11 - Registrar consulta com retorno em 7 dias (PBI 5)",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);",
+                  "pm.collectionVariables.set('dataRetorno', d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Status 201 Created', function () { pm.response.to.have.status(201); });",
+                  "pm.test('Consulta registrada no pet correto', function () {",
+                  "    pm.expect(json.petId).to.eql(Number(pm.collectionVariables.get('petId')));",
+                  "    pm.expect(json.motivo).to.eql('Check-up anual');",
+                  "    pm.expect(json.custo).to.eql(180);",
+                  "});",
+                  "pm.collectionVariables.set('consultaId', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/Consultas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Consultas"
+              ]
+            },
+            "description": "Entrada: consulta de check-up com data de retorno = hoje + 7 dias. Saída esperada: 201 e id gerado.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataConsulta\": \"2026-10-20\",\n  \"motivo\": \"Check-up anual\",\n  \"veterinario\": \"Dra. Paula Reis\",\n  \"clinica\": \"Clínica VetCare\",\n  \"diagnostico\": \"Saudável\",\n  \"tratamento\": \"Manter rotina\",\n  \"custo\": 180.0,\n  \"dataRetorno\": \"{{dataRetorno}}\",\n  \"petId\": {{petId}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "TC12 - Lembrete: retorno aparece na lista de pendentes (PBI 7)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Consulta do TC11 está na lista de retornos', function () {",
+                  "    const ids = pm.response.json().map(c => c.id);",
+                  "    pm.expect(ids).to.include(Number(pm.collectionVariables.get('consultaId')));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Consultas/retornos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Consultas",
+                "retornos"
+              ]
+            },
+            "description": "Saída esperada: 200 e a consulta do TC11 presente na lista de retornos dos próximos 30 dias."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Segurança LGPD (PBI 6)",
+      "description": "Exposição de dados em erros.",
+      "item": [
+        {
+          "name": "TC13 - Erro não expõe detalhes internos (PBI 6)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found', function () { pm.response.to.have.status(404); });",
+                  "pm.test('Corpo só com a mensagem amigável', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(Object.keys(json)).to.eql(['mensagem']);",
+                  "    pm.expect(json.mensagem).to.eql('Pet com ID 999999 não encontrado.');",
+                  "});",
+                  "pm.test('Sem vazamento de detalhes técnicos', function () {",
+                  "    const txt = pm.response.text().toLowerCase();",
+                  "    ['stack', 'exception', 'ora-', 'oracle', 'tb_ph'].forEach(t => pm.expect(txt).to.not.include(t));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Pets/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Pets",
+                "999999"
+              ]
+            },
+            "description": "Saída esperada: 404 com apenas o campo 'mensagem', sem stack trace, SQL ou nomes de tabela."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Limpeza",
+      "description": "Remove os dados criados e valida a cascata.",
+      "item": [
+        {
+          "name": "TC14 - Excluir tutor de teste (limpeza)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204 No Content', function () { pm.response.to.have.status(204); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Tutores/{{tutorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Tutores",
+                "{{tutorId}}"
+              ]
+            },
+            "description": "Remove o tutor criado no TC01. Saída esperada: 204 No Content."
+          }
+        },
+        {
+          "name": "TC15 - Exclusão em cascata remove o pet (integridade)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404 Not Found (pet removido em cascata)', function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/Pets/{{petId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "Pets",
+                "{{petId}}"
+              ]
+            },
+            "description": "Saída esperada: 404, pois o pet do tutor excluído foi removido em cascata."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "tutorId",
+      "value": ""
+    },
+    {
+      "key": "petId",
+      "value": ""
+    },
+    {
+      "key": "vacinaId",
+      "value": ""
+    },
+    {
+      "key": "consultaId",
+      "value": ""
+    },
+    {
+      "key": "dataProximaDose",
+      "value": ""
+    },
+    {
+      "key": "dataRetorno",
+      "value": ""
+    }
+  ]
+}

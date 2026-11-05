@@ -1,0 +1,118 @@
+Execução dos testes de sistema - Pet Health API - 04/11/2026 20:18
+Ambiente: http://localhost:8080 (docker compose: API .NET 8 + Oracle XE 21) | data de referência D = 2026-11-04
+TUTOR_ID (Ana Souza) = 1
+
+=== CT02 - Bloqueio de tutor duplicado ou inválido (PBI 1) ===
+  tutores antes: 2
+  [PASS] Iteração 1 - e-mail duplicado -> HTTP 400
+  [PASS] Iteração 2 - e-mail inválido -> HTTP 400
+  [PASS] Iteração 3 - nome vazio -> HTTP 400
+  [PASS] Nenhum tutor gravado (continua 2)
+
+=== CT03 - Cadastro de pet válido e valores-limite (PBI 1) ===
+  [PASS] Iteração 1 - Thor -> HTTP 201
+  [PASS] Iteração 2 - Mia -> HTTP 201
+  [PASS] Iteração 3 - Pipoca (idade 0, peso 0.1) -> HTTP 201
+  [PASS] Iteração 4 - Duque (idade 30, peso 200) -> HTTP 201
+  PET_ID (Thor) = 2 | MIA_ID (Mia) = 3
+  [PASS] GET /api/Pets/2 -> HTTP 200
+  [PASS] Pets do tutor contêm Thor -> HTTP 200
+
+=== CT04 - Rejeição de pet inválido (PBI 1) ===
+  pets antes: 5
+  [PASS] Iteração 1 - nome vazio -> HTTP 400
+  [PASS] Iteração 2 - idade 31 -> HTTP 400
+  [PASS] Iteração 3 - peso 0 -> HTTP 400
+  [PASS] Iteração 4 - peso 250 -> HTTP 400
+  [PASS] Iteração 5 - tutor inexistente -> HTTP 400
+  [PASS] Nenhum pet gravado (continua 5)
+
+=== CT05 - Edição dos dados do pet (PBI 2) ===
+  [PASS] GET dados atuais do Thor -> HTTP 200
+  [PASS] Iteração 1 - PUT idade 4, peso 30.2, Frango -> HTTP 204
+  [PASS] Iteração 1 - GET confirma alergias Frango -> HTTP 200
+  [PASS] Iteração 2 - PUT peso 29, Nenhuma -> HTTP 204
+  [PASS] Iteração 2 - GET confirma peso 29 -> HTTP 200
+
+=== CT06 - Rejeição de edição inválida (PBI 2) ===
+  [PASS] Iteração 1 - ID divergente -> HTTP 400
+  [PASS] Iteração 2 - pet inexistente -> HTTP 404
+  [PASS] Iteração 3 - peso 0 -> HTTP 400
+  [PASS] Peso do Thor continua 29 -> HTTP 200
+
+=== CT07 - Registro de vacina (PBI 3) ===
+  [PASS] Iteração 1 - V10 -> HTTP 201
+  [PASS] GET vacina 2 -> HTTP 200
+  [PASS] Iteração 2 - Antirrábica -> HTTP 201
+  [PASS] GET vacina 3 -> HTTP 200
+
+=== CT08 - Rejeição de vacina inválida (PBI 3) ===
+  [PASS] Iteração 1 - sem nome -> HTTP 400
+  [PASS] Iteração 2 - pet inexistente -> HTTP 400
+  [PASS] Carteira do Thor continua com 2 vacinas
+
+=== CT09 - Carteira de vacinação (PBI 4) ===
+  [PASS] Iteração 1 - carteira do Thor -> HTTP 200
+  [PASS] 2 vacinas na carteira
+  [PASS] Carteira sem e-mail/telefone do tutor
+  [PASS] Iteração 2 - carteira da Mia (vazia) -> HTTP 200
+  [PASS] Iteração 3 - pet inexistente -> HTTP 404
+
+=== CT10 - Consultas e ordem do histórico (PBI 5) ===
+  [PASS] Iteração 1 - Check-up anual -> HTTP 201
+  [PASS] Iteração 2 - Coceira na orelha -> HTTP 201
+  [PASS] Histórico começa pela mais recente (02/09)
+
+=== CT11 - Medicamentos e lista de ativos (PBI 5) ===
+  [PASS] Iteração 1 - Otomax ativo -> HTTP 201
+  [PASS] Iteração 2 - Apoquel inativo -> HTTP 201
+  [PASS] Otomax aparece nos ativos
+  [PASS] Apoquel não aparece nos ativos
+  [PASS] Medicamentos do Thor -> HTTP 200
+
+=== CT12 - Rejeição de registro clínico inválido (PBI 5) ===
+  [PASS] Iteração 1 - consulta sem motivo -> HTTP 400
+  [PASS] Iteração 2 - consulta de pet inexistente -> HTTP 400
+  [PASS] Iteração 3 - medicamento sem dosagem -> HTTP 400
+  [PASS] Continuam 2 consultas e 2 medicamentos
+
+=== CT13 - Rastreabilidade X-Correlation-ID (PBI 6) ===
+  X-Correlation-ID: CT13-AUDIT-0001
+  [PASS] Iteração 1 - ID enviado devolvido
+  X-Correlation-ID: 53f6be3a-f1bc-4681-832f-4edf281425fd
+  [PASS] Iteração 2 - GUID gerado (36 caracteres)
+  [PASS] ID aparece no log da API
+
+=== CT14 - Respostas sem dados internos nem pessoais (PBI 6) ===
+  [PASS] /api/Pets/99999 (HTTP 404) sem stack, Oracle, tabela, e-mail ou telefone
+  [PASS] /api/Vacinas/pet/2 (HTTP 200) sem stack, Oracle, tabela, e-mail ou telefone
+  [PASS] /api/Medicamentos/ativos (HTTP 200) sem stack, Oracle, tabela, e-mail ou telefone
+  [PASS] Erro 404 só com mensagem amigável -> HTTP 404
+
+=== CT16 - Vacinas a vencer em 30 dias (PBI 7) ===
+  [PASS] POST Reforço Gripe Canina (próxima dose 2026-11-14) -> HTTP 201
+  [PASS] POST Reforço Giárdia (próxima dose 2026-12-04) -> HTTP 201
+  [PASS] POST Reforço Leishmaniose (próxima dose 2026-12-05) -> HTTP 201
+  [PASS] POST Reforço V8 atrasado (próxima dose 2026-10-30) -> HTTP 201
+  [PASS] Gripe Canina aparece
+  [PASS] rdia aparece
+  [PASS] Leishmaniose não aparece
+  [PASS] V8 atrasado não aparece
+  [PASS] Lista em ordem crescente de próxima dose
+
+=== CT17 - Retornos de consulta pendentes (PBI 7) ===
+  [PASS] POST retorno em 2026-11-11 -> HTTP 201
+  [PASS] POST retorno em 2026-12-19 -> HTTP 201
+  [PASS] Pós-operatório castração aparece
+  [PASS] Exame de sangue não aparece
+
+=== CT15 - Credencial protegida e monitoramento do banco (PBI 6) ===
+  [PASS] appsettings.json sem senha (connection string via variável de ambiente)
+  [PASS] Iteração 1 - banco ligado: oracle-database Healthy
+  [PASS] Iteração 2 - banco parado: oracle-database Unhealthy
+  Religando o Oracle (aguarde até 2 min)...
+  Oracle de volta: "nome":"oracle-database","status":"Healthy"
+
+==================================================
+RESUMO: 72 verificações aprovadas, 0 reprovadas
+==================================================
