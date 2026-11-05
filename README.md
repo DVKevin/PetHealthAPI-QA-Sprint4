@@ -7,7 +7,7 @@ Entrega da 4ª Sprint de **Compliance, Quality Assurance & Tests** (FIAP 2026) �
 | Item                                                     | Link                                               |
 | -------------------------------------------------------- | -------------------------------------------------- |
 | Azure Boards / Test Plans (Overview → Summary)           | https://dev.azure.com/pethealth-fiap/Pet%20Health  |
-| Vídeo da automação (configuração, execução e resultados) | **COLE_AQUI_O_LINK_DO_VIDEO**                      |
+| Vídeo da automação (configuração, execução e resultados) | https://youtu.be/azWmhva43LE                      |
 | Código da API testada                                    | https://github.com/DVKevin/PetHealthAPI-DevOps-sp3 |
 
 ## 👥 Integrantes
